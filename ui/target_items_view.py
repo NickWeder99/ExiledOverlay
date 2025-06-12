@@ -43,7 +43,7 @@ class TargetItemsView(QWidget):
         layout.addWidget(self.items_list)
         
         # Info label
-        info = QLabel("Double-click to remove items")
+        info = QLabel("Double-click an item to remove it")
         info.setStyleSheet("color: #888; font-size: 12px;")
         layout.addWidget(info)
         
