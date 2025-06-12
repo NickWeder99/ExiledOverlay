@@ -71,12 +71,18 @@ def load_token() -> dict | None:
         return None
 
 
-def _get_client_credentials() -> tuple[str, str | None]:
-    """Return the configured client id and secret."""
+def _get_client_credentials() -> tuple[str, str]:
+    """Return the configured client id and secret.
+
+    This overlay uses the confidential OAuth client flow which requires both a
+    ``client_id`` and ``client_secret``. If either value is missing a runtime
+    error is raised.
+    """
+
     client_id = os.environ.get("POE_CLIENT_ID")
     client_secret = os.environ.get("POE_CLIENT_SECRET")
-    if not client_id:
-        raise RuntimeError("POE_CLIENT_ID must be set")
+    if not client_id or not client_secret:
+        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
     return client_id, client_secret
 
 
