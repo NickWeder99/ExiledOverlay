@@ -25,3 +25,6 @@ During login a browser window will open asking for permission. OAuth tokens are 
 
 Launch the overlay and open the **Account** view to initiate the login flow at any time.
 
+Tokens include their expiration time. Use ``poe_auth.ensure_valid_token()`` to
+retrieve a usable token, which will automatically refresh it when needed.
+
