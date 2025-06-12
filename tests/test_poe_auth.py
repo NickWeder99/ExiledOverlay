@@ -27,11 +27,27 @@ def test_save_and_load_token(monkeypatch, tmp_path):
     assert loaded == token
 
 
-def test_login_env_missing(monkeypatch):
+def test_get_client_credentials_missing(monkeypatch):
     monkeypatch.delenv("POE_CLIENT_ID", raising=False)
     monkeypatch.delenv("POE_CLIENT_SECRET", raising=False)
     with pytest.raises(RuntimeError):
-        poe_auth.login()
+        poe_auth._get_client_credentials()
+
+
+def test_get_client_credentials_optional_secret(monkeypatch):
+    monkeypatch.setenv("POE_CLIENT_ID", "abc")
+    monkeypatch.delenv("POE_CLIENT_SECRET", raising=False)
+    cid, secret = poe_auth._get_client_credentials()
+    assert cid == "abc"
+    assert secret is None
+
+
+def test_get_client_credentials_with_secret(monkeypatch):
+    monkeypatch.setenv("POE_CLIENT_ID", "abc")
+    monkeypatch.setenv("POE_CLIENT_SECRET", "xyz")
+    cid, secret = poe_auth._get_client_credentials()
+    assert cid == "abc"
+    assert secret == "xyz"
 
 
 def test_ensure_valid_token_refresh(monkeypatch, tmp_path):
