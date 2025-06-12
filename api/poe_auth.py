@@ -13,6 +13,7 @@ import os
 import secrets
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import time
 from urllib.parse import urlencode, urlparse, parse_qs
 from urllib import request
 
@@ -20,6 +21,8 @@ AUTH_URL = "https://www.pathofexile.com/oauth/authorize"
 TOKEN_URL = "https://www.pathofexile.com/oauth/token"
 DEFAULT_SCOPE = "account:profile"
 TOKEN_FILE = os.path.expanduser("~/.exiledoverlay_tokens.json")
+CALLBACK_PORT = 8765
+LOGIN_TIMEOUT = 120  # seconds to wait for browser callback
 
 
 class _CallbackHandler(BaseHTTPRequestHandler):
@@ -75,7 +78,7 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
     if not client_id or not client_secret:
         raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
 
-    redirect_uri = "http://localhost:8765/callback"
+    redirect_uri = f"http://localhost:{CALLBACK_PORT}/callback"
     state = secrets.token_urlsafe(16)
 
     params = {
@@ -88,8 +91,19 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
     url = f"{AUTH_URL}?{urlencode(params)}"
     webbrowser.open(url)
 
-    with _AuthServer(("localhost", 8765), state) as httpd:
+    try:
+        httpd = _AuthServer(("localhost", CALLBACK_PORT), state)
+    except OSError as exc:  # pragma: no cover - depends on system state
+        raise RuntimeError(
+            f"Port {CALLBACK_PORT} is unavailable"
+        ) from exc
+
+    with httpd:
+        httpd.timeout = 1
+        start = time.monotonic()
         while httpd.code is None:
+            if time.monotonic() - start > LOGIN_TIMEOUT:
+                raise TimeoutError("Login timed out waiting for callback")
             httpd.handle_request()
         code = httpd.code
 
@@ -109,6 +123,11 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
         if resp.status != 200:
             raise RuntimeError(f"Token request failed: {resp.status}")
         token = json.load(resp)
+
+    if "access_token" not in token or "refresh_token" not in token:
+        raise RuntimeError("Token response missing required fields")
+
+    token["expires_at"] = time.time() + token.get("expires_in", 0)
     _save_token(token)
     return token
 
@@ -135,5 +154,23 @@ def refresh_token(token: dict) -> dict:
         if resp.status != 200:
             raise RuntimeError(f"Token refresh failed: {resp.status}")
         new_token = json.load(resp)
+
+    if "access_token" not in new_token or "refresh_token" not in new_token:
+        raise RuntimeError("Token refresh response missing required fields")
+
+    new_token["expires_at"] = time.time() + new_token.get("expires_in", 0)
     _save_token(new_token)
     return new_token
+
+
+def ensure_valid_token(scope: str = DEFAULT_SCOPE) -> dict:
+    """Return a valid OAuth token, refreshing or logging in if necessary."""
+    token = load_token()
+    if token is None:
+        return login(scope)
+
+    expires_at = token.get("expires_at")
+    if isinstance(expires_at, (int, float)) and expires_at <= time.time():
+        return refresh_token(token)
+
+    return token
