@@ -71,12 +71,18 @@ def load_token() -> dict | None:
         return None
 
 
-def login(scope: str = DEFAULT_SCOPE) -> dict:
-    """Perform OAuth login flow and return the obtained token."""
+def _get_client_credentials() -> tuple[str, str | None]:
+    """Return the configured client id and secret."""
     client_id = os.environ.get("POE_CLIENT_ID")
     client_secret = os.environ.get("POE_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
+    if not client_id:
+        raise RuntimeError("POE_CLIENT_ID must be set")
+    return client_id, client_secret
+
+
+def login(scope: str = DEFAULT_SCOPE) -> dict:
+    """Perform OAuth login flow and return the obtained token."""
+    client_id, client_secret = _get_client_credentials()
 
     redirect_uri = f"http://localhost:{CALLBACK_PORT}/callback"
     state = secrets.token_urlsafe(16)
@@ -111,9 +117,10 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
         "grant_type": "authorization_code",
         "code": code,
         "client_id": client_id,
-        "client_secret": client_secret,
         "redirect_uri": redirect_uri,
     }
+    if client_secret:
+        data["client_secret"] = client_secret
     req = request.Request(
         TOKEN_URL,
         data=urlencode(data).encode(),
@@ -134,17 +141,15 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
 
 def refresh_token(token: dict) -> dict:
     """Refresh an expired OAuth token."""
-    client_id = os.environ.get("POE_CLIENT_ID")
-    client_secret = os.environ.get("POE_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
+    client_id, client_secret = _get_client_credentials()
 
     data = {
         "grant_type": "refresh_token",
         "refresh_token": token.get("refresh_token"),
         "client_id": client_id,
-        "client_secret": client_secret,
     }
+    if client_secret:
+        data["client_secret"] = client_secret
     req = request.Request(
         TOKEN_URL,
         data=urlencode(data).encode(),
