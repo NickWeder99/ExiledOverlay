@@ -23,3 +23,5 @@ The overlay uses the official PoE OAuth API for account access. Set the followin
 
 During login a browser window will open asking for permission. OAuth tokens are stored in `~/.exiledoverlay_tokens.json` with permissions `600` so only your user can read them.
 
+Launch the overlay and open the **Account** view to initiate the login flow at any time.
+

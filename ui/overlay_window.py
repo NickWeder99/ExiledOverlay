@@ -11,6 +11,7 @@ from ui.friends_view import FriendsView
 from ui.pob_view import PathOfBuildingView
 from ui.currency_view import CurrencyView
 from ui.tracker_view import TrackerView
+from ui.account_view import AccountView
 
 class OverlayWindow(QMainWindow):
     def __init__(self):
@@ -37,6 +38,7 @@ class OverlayWindow(QMainWindow):
         self.expanded_sidebar_width = 220
         
         self.modules = {
+            "Account": AccountView(),
             "Levelguide": LevelGuideView(),
             "Target Items": TargetItemsView(),
             "Friends": FriendsView(),
@@ -95,6 +97,7 @@ class OverlayWindow(QMainWindow):
 
     def _get_icon_for_module(self, module_name):
         icons = {
+            "Account": "🔑",
             "Levelguide": "📖",
             "Target Items": "🎯",
             "Friends": "👥",
