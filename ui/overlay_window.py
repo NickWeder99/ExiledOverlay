@@ -34,6 +34,7 @@ class OverlayWindow(QMainWindow):
         self.is_expanded = False
         self.collapsed_width = 60
         self.expanded_width = 350
+        self.expanded_sidebar_width = 220
         
         self.modules = {
             "Levelguide": LevelGuideView(),
@@ -137,7 +138,7 @@ class OverlayWindow(QMainWindow):
         
         if self.is_expanded:
             self.setFixedWidth(self.expanded_width)
-            self.sidebar.setFixedWidth(self.collapsed_width)
+            self.sidebar.setFixedWidth(self.expanded_sidebar_width)
             self.content_area.setVisible(True)
             self.toggle_button.setText("←")
             
@@ -147,6 +148,7 @@ class OverlayWindow(QMainWindow):
                 btn.setFixedSize(200, 40)
         else:
             self.setFixedWidth(self.collapsed_width)
+            self.sidebar.setFixedWidth(self.collapsed_width)
             self.content_area.setVisible(False)
             self.toggle_button.setText("→")
             
