@@ -16,13 +16,14 @@ The tests currently cover the LevelGuide helper module located under `ui.modules
 
 ## Logging into Path of Exile
 
-The overlay uses the official PoE OAuth API for account access. Register an application on
+The overlay uses the official PoE OAuth API for account access. Register a
+**confidential** application on
 [the Path of Exile website](https://www.pathofexile.com/oauth/authorize) to obtain your
-**client id** and, for confidential clients, a **client secret**. Set the following
-environment variables before running the application:
+**client id** and **client secret**. Set the following environment variables
+before running the application:
 
 - `POE_CLIENT_ID` *(required)*
-- `POE_CLIENT_SECRET` *(optional for public clients)*
+- `POE_CLIENT_SECRET` *(required)*
 
 During login a browser window will open asking for permission. OAuth tokens are stored in `~/.exiledoverlay_tokens.json` with permissions `600` so only your user can read them.
 
