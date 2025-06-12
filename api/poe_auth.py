@@ -1,0 +1,139 @@
+# api/poe_auth.py
+"""Simple OAuth helper for logging into Path of Exile.
+
+This module handles obtaining and refreshing OAuth tokens using
+Path of Exile's official API. Tokens are stored on disk with
+restricted permissions so only the user can read them.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import secrets
+import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlencode, urlparse, parse_qs
+from urllib import request
+
+AUTH_URL = "https://www.pathofexile.com/oauth/authorize"
+TOKEN_URL = "https://www.pathofexile.com/oauth/token"
+DEFAULT_SCOPE = "account:profile"
+TOKEN_FILE = os.path.expanduser("~/.exiledoverlay_tokens.json")
+
+
+class _CallbackHandler(BaseHTTPRequestHandler):
+    """Handler used for the temporary OAuth callback server."""
+
+    server: "_AuthServer"  # type: ignore[assignment]
+
+    def do_GET(self) -> None:  # noqa: D401
+        params = parse_qs(urlparse(self.path).query)
+        state = params.get("state", [""])[0]
+        if state != self.server.state:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"Invalid state")
+            return
+        self.server.code = params.get("code", [None])[0]
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Login complete. You may close this window.")
+
+
+class _AuthServer(HTTPServer):
+    def __init__(self, addr: tuple[str, int], state: str):
+        super().__init__(addr, _CallbackHandler)
+        self.code: str | None = None
+        self.state = state
+
+
+def _get_token_path() -> str:
+    return TOKEN_FILE
+
+
+def _save_token(token: dict) -> None:
+    path = _get_token_path()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(token, f)
+    os.chmod(path, 0o600)
+
+
+def load_token() -> dict | None:
+    """Load a previously saved OAuth token, if available."""
+    try:
+        with open(_get_token_path(), "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+
+def login(scope: str = DEFAULT_SCOPE) -> dict:
+    """Perform OAuth login flow and return the obtained token."""
+    client_id = os.environ.get("POE_CLIENT_ID")
+    client_secret = os.environ.get("POE_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
+
+    redirect_uri = "http://localhost:8765/callback"
+    state = secrets.token_urlsafe(16)
+
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "scope": scope,
+        "state": state,
+    }
+    url = f"{AUTH_URL}?{urlencode(params)}"
+    webbrowser.open(url)
+
+    with _AuthServer(("localhost", 8765), state) as httpd:
+        while httpd.code is None:
+            httpd.handle_request()
+        code = httpd.code
+
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+    }
+    req = request.Request(
+        TOKEN_URL,
+        data=urlencode(data).encode(),
+        headers={"User-Agent": "ExiledOverlay"},
+    )
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Token request failed: {resp.status}")
+        token = json.load(resp)
+    _save_token(token)
+    return token
+
+
+def refresh_token(token: dict) -> dict:
+    """Refresh an expired OAuth token."""
+    client_id = os.environ.get("POE_CLIENT_ID")
+    client_secret = os.environ.get("POE_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
+
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": token.get("refresh_token"),
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    req = request.Request(
+        TOKEN_URL,
+        data=urlencode(data).encode(),
+        headers={"User-Agent": "ExiledOverlay"},
+    )
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Token refresh failed: {resp.status}")
+        new_token = json.load(resp)
+    _save_token(new_token)
+    return new_token

@@ -12,5 +12,14 @@ pip install pytest
 pytest
 ```
 
-The tests currently cover the LevelGuide helper module located under
-`ui.modules.levelguide`.
+The tests currently cover the LevelGuide helper module located under `ui.modules.levelguide` and the PoE OAuth helper in `api.poe_auth`.
+
+## Logging into Path of Exile
+
+The overlay uses the official PoE OAuth API for account access. Set the following environment variables before running the application:
+
+- `POE_CLIENT_ID`
+- `POE_CLIENT_SECRET`
+
+During login a browser window will open asking for permission. OAuth tokens are stored in `~/.exiledoverlay_tokens.json` with permissions `600` so only your user can read them.
+
