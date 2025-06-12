@@ -168,6 +168,38 @@ def refresh_token(token: dict) -> dict:
     return new_token
 
 
+def request_token_via_refresh(refresh_token: str) -> dict:
+    """Request a new OAuth token using an explicit refresh token."""
+    client_id, client_secret = _get_client_credentials()
+
+    data = {
+        "client_id": client_id,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }
+    if client_secret:
+        data["client_secret"] = client_secret
+    req = request.Request(
+        TOKEN_URL,
+        data=urlencode(data).encode(),
+        headers={
+            "User-Agent": "ExiledOverlay",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Token request failed: {resp.status}")
+        token = json.load(resp)
+
+    if "access_token" not in token or "refresh_token" not in token:
+        raise RuntimeError("Token response missing required fields")
+
+    token["expires_at"] = time.time() + token.get("expires_in", 0)
+    _save_token(token)
+    return token
+
+
 def ensure_valid_token(scope: str = DEFAULT_SCOPE) -> dict:
     """Return a valid OAuth token, refreshing or logging in if necessary."""
     token = load_token()

@@ -31,3 +31,19 @@ Launch the overlay and open the **Account** view to initiate the login flow at a
 Tokens include their expiration time. Use ``poe_auth.ensure_valid_token()`` to
 retrieve a usable token, which will automatically refresh it when needed.
 
+### Requesting a token with a refresh token
+
+If you already have a valid ``refresh_token`` you can obtain a new access token
+directly using the ``poe_auth.request_token_via_refresh`` helper which performs
+a ``POST`` request to ``https://www.pathofexile.com/oauth/token`` with form
+encoded parameters::
+
+    client_id=<your id>
+    client_secret=<your secret>
+    grant_type=refresh_token
+    refresh_token=<stored refresh token>
+
+The response contains a new ``access_token`` and ``refresh_token`` among other
+fields. The helper automatically stores the returned token on disk with an
+``expires_at`` timestamp.
+
