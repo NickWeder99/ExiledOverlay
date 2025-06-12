@@ -137,7 +137,8 @@ class OverlayWindow(QMainWindow):
         
         if self.is_expanded:
             self.setFixedWidth(self.expanded_width)
-            self.sidebar.setFixedWidth(self.collapsed_width)
+            # Expand the sidebar so button text fits within the frame
+            self.sidebar.setFixedWidth(200)
             self.content_area.setVisible(True)
             self.toggle_button.setText("←")
             
@@ -147,6 +148,8 @@ class OverlayWindow(QMainWindow):
                 btn.setFixedSize(200, 40)
         else:
             self.setFixedWidth(self.collapsed_width)
+            # Shrink the sidebar back to its collapsed width
+            self.sidebar.setFixedWidth(self.collapsed_width)
             self.content_area.setVisible(False)
             self.toggle_button.setText("→")
             
