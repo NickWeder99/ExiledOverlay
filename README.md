@@ -25,7 +25,7 @@ before running the application:
 - `POE_CLIENT_ID` *(required)*
 - `POE_CLIENT_SECRET` *(required)*
 
-During login a browser window will open asking for permission. OAuth tokens are stored in `~/.exiledoverlay_tokens.json` with permissions `600` so only your user can read them.
+The provided credentials are cached in `~/.exiledoverlay_credentials.json` after first use so they only need to be set once. During login a browser window will open asking for permission. OAuth tokens are stored in `~/.exiledoverlay_tokens.json` with permissions `600` so only your user can read them.
 
 Launch the overlay and open the **Account** view to initiate the login flow at any time.
 

@@ -41,12 +41,30 @@ def test_get_client_credentials_missing_secret(monkeypatch):
         poe_auth._get_client_credentials()
 
 
-def test_get_client_credentials_with_secret(monkeypatch):
+def test_get_client_credentials_with_secret(monkeypatch, tmp_path):
+    cred = tmp_path / "creds.json"
+    monkeypatch.setattr(poe_auth, "CREDENTIALS_FILE", str(cred))
     monkeypatch.setenv("POE_CLIENT_ID", "abc")
     monkeypatch.setenv("POE_CLIENT_SECRET", "xyz")
     cid, secret = poe_auth._get_client_credentials()
     assert cid == "abc"
     assert secret == "xyz"
+    saved = json.load(open(cred, "r", encoding="utf-8"))
+    assert saved == {"client_id": "abc", "client_secret": "xyz"}
+    mode = cred.stat().st_mode & 0o777
+    assert mode == 0o600
+
+
+def test_get_client_credentials_from_file(monkeypatch, tmp_path):
+    cred = tmp_path / "creds.json"
+    monkeypatch.setattr(poe_auth, "CREDENTIALS_FILE", str(cred))
+    with open(cred, "w", encoding="utf-8") as f:
+        json.dump({"client_id": "abc", "client_secret": "xyz"}, f)
+    os.chmod(cred, 0o600)
+    monkeypatch.delenv("POE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("POE_CLIENT_SECRET", raising=False)
+    cid, secret = poe_auth._get_client_credentials()
+    assert (cid, secret) == ("abc", "xyz")
 
 
 def test_ensure_valid_token_refresh(monkeypatch, tmp_path):
