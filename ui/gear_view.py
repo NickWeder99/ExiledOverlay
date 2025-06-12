@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
-import requests
+from urllib import request
 from api.poe_api import fetch_gear
 
 def build_item_tooltip(item):
@@ -47,7 +47,8 @@ class GearView(QWidget):
             label = QLabel()
             if item and item.get("icon"):
                 try:
-                    img_data = requests.get(item["icon"]).content
+                    with request.urlopen(item["icon"]) as resp:
+                        img_data = resp.read()
                     pixmap = QPixmap()
                     pixmap.loadFromData(img_data)
                     label.setPixmap(pixmap.scaled(60, 60, Qt.AspectRatioMode.KeepAspectRatio))
@@ -65,7 +66,8 @@ class GearView(QWidget):
             label = QLabel()
             if item and item.get("icon"):
                 try:
-                    img_data = requests.get(item["icon"]).content
+                    with request.urlopen(item["icon"]) as resp:
+                        img_data = resp.read()
                     pixmap = QPixmap()
                     pixmap.loadFromData(img_data)
                     label.setPixmap(pixmap.scaled(40, 60, Qt.AspectRatioMode.KeepAspectRatio))
