@@ -4,6 +4,8 @@ import json
 import time
 
 import pytest
+import threading
+import http.client
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -121,4 +123,29 @@ def test_ensure_valid_token_public_refresh(monkeypatch, tmp_path):
 
     token = poe_auth.ensure_valid_token_public("acc")
     assert token == refreshed
+
+
+def test_callback_error(monkeypatch):
+    server = poe_auth._AuthServer(("localhost", 0), "xyz")
+    port = server.server_address[1]
+
+    def serve_once():
+        server.handle_request()
+
+    t = threading.Thread(target=serve_once)
+    t.start()
+
+    conn = http.client.HTTPConnection("localhost", port)
+    conn.request(
+        "GET",
+        "/callback?state=xyz&error=invalid_client&error_description=bad+id",
+    )
+    resp = conn.getresponse()
+    resp.read()
+    conn.close()
+    t.join()
+
+    assert resp.status == 200
+    assert server.error == "bad id"
+    assert server.code is None
 
