@@ -30,8 +30,14 @@ class LevelGuideView(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+<<<<<<< w73mv5-codex/lokal-credentials-erstellen-und-speichern
+        # Keep the guide compact so the overlay doesn't cover too much of the
+        # screen but remains readable.
+        scroll.setMinimumWidth(200)
+=======
         # Ensure enough width for comfortable reading
         scroll.setMinimumWidth(280)
+>>>>>>> main
 
         self.text_widget = QTextEdit()
         self.text_widget.setReadOnly(True)

@@ -34,9 +34,15 @@ class OverlayWindow(QMainWindow):
         
         self.is_expanded = False
         self.collapsed_width = 60
+<<<<<<< w73mv5-codex/lokal-credentials-erstellen-und-speichern
+        # Make the expanded overlay smaller so it overlaps the game less while
+        # still leaving enough space for the main views.
+        self.expanded_width = 420
+=======
         # Allow a bit more room for the main view, especially the level guide
         # content which benefits from a wider display.
         self.expanded_width = 500
+>>>>>>> main
         self.expanded_sidebar_width = 220
         
         self.modules = {
