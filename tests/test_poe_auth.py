@@ -124,7 +124,6 @@ def test_ensure_valid_token_public_refresh(monkeypatch, tmp_path):
     token = poe_auth.ensure_valid_token_public("acc")
     assert token == refreshed
 
-
 def test_callback_error(monkeypatch):
     server = poe_auth._AuthServer(("localhost", 0), "xyz")
     port = server.server_address[1]
@@ -148,4 +147,5 @@ def test_callback_error(monkeypatch):
     assert resp.status == 200
     assert server.error == "bad id"
     assert server.code is None
+
 
