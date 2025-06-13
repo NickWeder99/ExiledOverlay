@@ -34,7 +34,9 @@ class OverlayWindow(QMainWindow):
         
         self.is_expanded = False
         self.collapsed_width = 60
-        self.expanded_width = 350
+        # Make the expanded overlay smaller so it overlaps the game less while
+        # still leaving enough space for the main views.
+        self.expanded_width = 420
         self.expanded_sidebar_width = 220
         
         self.modules = {

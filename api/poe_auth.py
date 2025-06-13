@@ -21,6 +21,7 @@ AUTH_URL = "https://www.pathofexile.com/oauth/authorize"
 TOKEN_URL = "https://www.pathofexile.com/oauth/token"
 DEFAULT_SCOPE = "account:profile"
 TOKEN_FILE = os.path.expanduser("~/.exiledoverlay_tokens.json")
+CREDENTIALS_FILE = os.path.expanduser("~/.exiledoverlay_credentials.json")
 CALLBACK_PORT = 8765
 LOGIN_TIMEOUT = 120  # seconds to wait for browser callback
 
@@ -62,6 +63,30 @@ def _save_token(token: dict) -> None:
     os.chmod(path, 0o600)
 
 
+def _get_credentials_path() -> str:
+    return CREDENTIALS_FILE
+
+
+def _save_credentials(client_id: str, client_secret: str) -> None:
+    path = _get_credentials_path()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"client_id": client_id, "client_secret": client_secret}, f)
+    os.chmod(path, 0o600)
+
+
+def _load_credentials() -> tuple[str, str] | None:
+    try:
+        with open(_get_credentials_path(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        cid = data.get("client_id")
+        secret = data.get("client_secret")
+        if cid and secret:
+            return cid, secret
+        return None
+    except FileNotFoundError:
+        return None
+
+
 def load_token() -> dict | None:
     """Load a previously saved OAuth token, if available."""
     try:
@@ -81,9 +106,16 @@ def _get_client_credentials() -> tuple[str, str]:
 
     client_id = os.environ.get("POE_CLIENT_ID")
     client_secret = os.environ.get("POE_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
-    return client_id, client_secret
+
+    if client_id and client_secret:
+        _save_credentials(client_id, client_secret)
+        return client_id, client_secret
+
+    creds = _load_credentials()
+    if creds:
+        return creds
+
+    raise RuntimeError("POE_CLIENT_ID and POE_CLIENT_SECRET must be set")
 
 
 def login(scope: str = DEFAULT_SCOPE) -> dict:
