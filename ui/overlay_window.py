@@ -34,7 +34,9 @@ class OverlayWindow(QMainWindow):
         
         self.is_expanded = False
         self.collapsed_width = 60
-        self.expanded_width = 350
+        # Allow a bit more room for the main view, especially the level guide
+        # content which benefits from a wider display.
+        self.expanded_width = 500
         self.expanded_sidebar_width = 220
         
         self.modules = {
