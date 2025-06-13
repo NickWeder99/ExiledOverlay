@@ -63,3 +63,21 @@ def fetch_currency(token, league, currencies):
             if name in counts:
                 counts[name] += int(item.get("stackSize", 1))
     return counts
+
+
+def fetch_item_count(token, league, item_name):
+    """Return the total count of ``item_name`` across all stashes."""
+    base = "https://api.pathofexile.com"
+    tabs_url = f"{base}/profile/stash-tabs?league={parse.quote(league)}"
+    data = _api_request(tabs_url, token)
+    tab_ids = [t["id"] for t in data.get("tabs", [])]
+
+    total = 0
+    for tab_id in tab_ids:
+        items_url = f"{base}/stash/{tab_id}?league={parse.quote(league)}"
+        tab_data = _api_request(items_url, token)
+        for item in tab_data.get("items", []):
+            if item.get("typeLine") == item_name or item.get("name") == item_name:
+                total += int(item.get("stackSize", 1))
+    return total
+
