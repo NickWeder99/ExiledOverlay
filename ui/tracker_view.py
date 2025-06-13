@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QSpinBox, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
+from api import poe_auth, poe_api
 import json
 import os
 
@@ -101,10 +102,21 @@ class TrackerView(QWidget):
     def add_tracker(self):
         item_name = self.item_input.text().strip()
         if item_name:
+            count = self.count_input.value()
+            try:
+                token = poe_auth.ensure_valid_token("account:stashes")
+                count = poe_api.fetch_item_count(
+                    token.get("access_token"),
+                    "Standard",
+                    item_name,
+                )
+            except Exception:
+                # Fall back to user provided value on error
+                pass
             tracker = {
                 "item": item_name,
-                "current": self.count_input.value(),
-                "target": self.target_input.value()
+                "current": count,
+                "target": self.target_input.value(),
             }
             self.trackers.append(tracker)
             self.save_trackers()
@@ -151,5 +163,5 @@ class TrackerView(QWidget):
             self.refresh_list()
 
     def edit_tracker(self, item):
-        # Double-click to increment by 1
+        """Double-click to increment the selected tracker by 1."""
         self.modify_selected(1)

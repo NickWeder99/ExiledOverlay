@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 import json
 import os
+from api import poe_api, poe_auth
 
 class CurrencyView(QWidget):
     def __init__(self):
@@ -90,7 +91,17 @@ class CurrencyView(QWidget):
             row += 1
 
     def refresh_currency(self):
-        # This would connect to PoE API to get actual currency amounts
-        # For now, just reload from file
-        self.currency_data = self.load_currency()
+        """Update currency counts using the PoE API."""
+        try:
+            token = poe_auth.ensure_valid_token("account:stashes")
+            counts = poe_api.fetch_currency(
+                token.get("access_token"),
+                "Standard",
+                list(self.currency_data.keys()),
+            )
+            self.currency_data.update(counts)
+            self.save_currency()
+        except Exception:
+            # Fall back to stored data if anything goes wrong
+            self.currency_data = self.load_currency()
         self.update_display()
