@@ -80,3 +80,4 @@ def fetch_item_count(token, league, item_name):
             if item.get("typeLine") == item_name or item.get("name") == item_name:
                 total += int(item.get("stackSize", 1))
     return total
+
