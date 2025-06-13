@@ -35,7 +35,10 @@ retrieve a usable token, which will automatically refresh it when needed.
 Alternatively you can authorize using just your account name. Enter the name in
 the **Account** view's input field and the overlay will log in as a *public*
 client. Public clients do not require a client secret but have shorter token
-lifetimes.
+
+lifetimes. The account must be registered as a public OAuth client on the PoE
+website or the authorization page will display an ``invalid_client`` error.
+
 
 ### Requesting a token with a refresh token
 

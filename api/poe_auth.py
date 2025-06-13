@@ -41,6 +41,15 @@ class _CallbackHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"Invalid state")
             return
+
+        if "error" in params:
+            desc = params.get("error_description", params["error"])[0]
+            self.server.error = desc
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(desc.encode())
+            return
+
         self.server.code = params.get("code", [None])[0]
         self.send_response(200)
         self.end_headers()
@@ -52,6 +61,7 @@ class _AuthServer(HTTPServer):
         super().__init__(addr, _CallbackHandler)
         self.code: str | None = None
         self.state = state
+        self.error: str | None = None
 
 
 def _get_token_path() -> str:
@@ -147,10 +157,12 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
     with httpd:
         httpd.timeout = 1
         start = time.monotonic()
-        while httpd.code is None:
+        while httpd.code is None and httpd.error is None:
             if time.monotonic() - start > LOGIN_TIMEOUT:
                 raise TimeoutError("Login timed out waiting for callback")
             httpd.handle_request()
+        if httpd.error:
+            raise RuntimeError(httpd.error)
         code = httpd.code
 
     data = {
@@ -213,10 +225,12 @@ def login_public(account_name: str, scope: str = DEFAULT_SCOPE) -> dict:
     with httpd:
         httpd.timeout = 1
         start = time.monotonic()
-        while httpd.code is None:
+        while httpd.code is None and httpd.error is None:
             if time.monotonic() - start > LOGIN_TIMEOUT:
                 raise TimeoutError("Login timed out waiting for callback")
             httpd.handle_request()
+        if httpd.error:
+            raise RuntimeError(httpd.error)
         code = httpd.code
 
     data = {
