@@ -30,8 +30,9 @@ class LevelGuideView(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        # Ensure enough width for comfortable reading
-        scroll.setMinimumWidth(280)
+        # Keep the guide compact so the overlay doesn't cover too much of the
+        # screen but remains readable.
+        scroll.setMinimumWidth(200)
 
         self.text_widget = QTextEdit()
         self.text_widget.setReadOnly(True)
