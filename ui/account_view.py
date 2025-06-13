@@ -1,5 +1,10 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QMessageBox,
+    QLineEdit,
 )
 from PyQt6.QtCore import Qt
 from api import poe_auth
@@ -24,6 +29,10 @@ class AccountView(QWidget):
         self.status_label.setStyleSheet("color: white;")
         layout.addWidget(self.status_label)
 
+        self.account_input = QLineEdit()
+        self.account_input.setPlaceholderText("Account name (public client)")
+        layout.addWidget(self.account_input)
+
         self.login_btn = QPushButton()
         self.login_btn.clicked.connect(self._login)
         layout.addWidget(self.login_btn)
@@ -44,7 +53,11 @@ class AccountView(QWidget):
         try:
             QMessageBox.information(
                 self, "Login", "A browser window will open for login.")
-            poe_auth.login()
+            account = self.account_input.text().strip()
+            if account:
+                poe_auth.login_public(account)
+            else:
+                poe_auth.login()
             QMessageBox.information(
                 self, "Login", "Authorization successful.")
         except Exception as exc:  # pragma: no cover - integration path
