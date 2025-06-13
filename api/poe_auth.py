@@ -16,6 +16,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 from urllib.parse import urlencode, urlparse, parse_qs
 from urllib import request
+import hashlib
+import base64
 
 AUTH_URL = "https://www.pathofexile.com/oauth/authorize"
 TOKEN_URL = "https://www.pathofexile.com/oauth/token"
@@ -177,6 +179,73 @@ def login(scope: str = DEFAULT_SCOPE) -> dict:
     return token
 
 
+def login_public(account_name: str, scope: str = DEFAULT_SCOPE) -> dict:
+    """Perform OAuth login using the public client flow."""
+    if not account_name:
+        raise ValueError("account_name required")
+
+    redirect_uri = f"http://localhost:{CALLBACK_PORT}/callback"
+    state = secrets.token_urlsafe(16)
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()
+    ).rstrip(b"=").decode()
+
+    params = {
+        "client_id": account_name,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "scope": scope,
+        "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    url = f"{AUTH_URL}?{urlencode(params)}"
+    webbrowser.open(url)
+
+    try:
+        httpd = _AuthServer(("localhost", CALLBACK_PORT), state)
+    except OSError as exc:  # pragma: no cover - depends on system state
+        raise RuntimeError(
+            f"Port {CALLBACK_PORT} is unavailable"
+        ) from exc
+
+    with httpd:
+        httpd.timeout = 1
+        start = time.monotonic()
+        while httpd.code is None:
+            if time.monotonic() - start > LOGIN_TIMEOUT:
+                raise TimeoutError("Login timed out waiting for callback")
+            httpd.handle_request()
+        code = httpd.code
+
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": account_name,
+        "redirect_uri": redirect_uri,
+        "code_verifier": verifier,
+    }
+    req = request.Request(
+        TOKEN_URL,
+        data=urlencode(data).encode(),
+        headers={"User-Agent": "ExiledOverlay"},
+    )
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Token request failed: {resp.status}")
+        token = json.load(resp)
+
+    if "access_token" not in token or "refresh_token" not in token:
+        raise RuntimeError("Token response missing required fields")
+
+    token["expires_at"] = time.time() + token.get("expires_in", 0)
+    token["client_id"] = account_name
+    token["public"] = True
+    _save_token(token)
+    return token
+
+
 def refresh_token(token: dict) -> dict:
     """Refresh an expired OAuth token."""
     client_id, client_secret = _get_client_credentials()
@@ -204,6 +273,54 @@ def refresh_token(token: dict) -> dict:
     new_token["expires_at"] = time.time() + new_token.get("expires_in", 0)
     _save_token(new_token)
     return new_token
+
+
+def refresh_token_public(token: dict) -> dict:
+    """Refresh an expired OAuth token for a public client."""
+    client_id = token.get("client_id")
+    if not client_id:
+        raise RuntimeError("token missing client_id")
+
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": token.get("refresh_token"),
+        "client_id": client_id,
+    }
+    req = request.Request(
+        TOKEN_URL,
+        data=urlencode(data).encode(),
+        headers={"User-Agent": "ExiledOverlay"},
+    )
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Token refresh failed: {resp.status}")
+        new_token = json.load(resp)
+
+    if "access_token" not in new_token or "refresh_token" not in new_token:
+        raise RuntimeError("Token refresh response missing required fields")
+
+    new_token["expires_at"] = time.time() + new_token.get("expires_in", 0)
+    new_token["client_id"] = client_id
+    new_token["public"] = True
+    _save_token(new_token)
+    return new_token
+
+
+def ensure_valid_token_public(account_name: str, scope: str = DEFAULT_SCOPE) -> dict:
+    """Return a valid token for a public client, refreshing or logging in."""
+    token = load_token()
+    if (
+        token is None
+        or token.get("client_id") != account_name
+        or not token.get("public")
+    ):
+        return login_public(account_name, scope)
+
+    expires_at = token.get("expires_at")
+    if isinstance(expires_at, (int, float)) and expires_at <= time.time():
+        return refresh_token_public(token)
+
+    return token
 
 
 def request_token_via_refresh(refresh_token: str) -> dict:
