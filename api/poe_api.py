@@ -30,3 +30,36 @@ def fetch_gear(account_name, character_name, poesessid=None):
             "explicitMods": item.get("explicitMods", [])
         }
     return gear
+
+
+def _api_request(url, token=None):
+    """Internal helper to perform an authenticated GET request."""
+    headers = {
+        "User-Agent": "ExiledOverlay",
+        "Accept": "application/json",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = request.Request(url, headers=headers)
+    with request.urlopen(req) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Failed request: {resp.status}")
+        return json.load(resp)
+
+
+def fetch_currency(token, league, currencies):
+    """Return currency counts for the logged in account."""
+    base = "https://api.pathofexile.com"
+    tabs_url = f"{base}/profile/stash-tabs?league={parse.quote(league)}"
+    data = _api_request(tabs_url, token)
+    tab_ids = [t["id"] for t in data.get("tabs", [])]
+
+    counts = {c: 0 for c in currencies}
+    for tab_id in tab_ids:
+        items_url = f"{base}/stash/{tab_id}?league={parse.quote(league)}"
+        tab_data = _api_request(items_url, token)
+        for item in tab_data.get("items", []):
+            name = item.get("typeLine")
+            if name in counts:
+                counts[name] += int(item.get("stackSize", 1))
+    return counts
